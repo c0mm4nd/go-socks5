@@ -1,13 +1,12 @@
 package socks5
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"strconv"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 const (
@@ -191,9 +190,11 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 	defer target.Close()
 
 	// Send success
-	local := target.LocalAddr().(*net.TCPAddr)
-	bind := AddrSpec{IP: local.IP, Port: local.Port}
-	if err := sendReply(conn, successReply, &bind); err != nil {
+	var bind *AddrSpec
+	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
+		bind = &AddrSpec{IP: tcpAddr.IP, Port: tcpAddr.Port}
+	}
+	if err := sendReply(conn, successReply, bind); err != nil {
 		return fmt.Errorf("Failed to send reply: %v", err)
 	}
 
