@@ -191,7 +191,7 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 
 	// Send success
 	var bind *AddrSpec
-	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
+	if tcpAddr, ok := target.LocalAddr().(*net.TCPAddr); ok {
 		bind = &AddrSpec{IP: tcpAddr.IP, Port: tcpAddr.Port}
 	}
 	if err := sendReply(conn, successReply, bind); err != nil {
