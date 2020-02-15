@@ -1,8 +1,8 @@
 package socks5
 
 import (
-	"context"
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net"
