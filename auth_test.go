@@ -11,7 +11,7 @@ func TestNoAuth(t *testing.T) {
 	var resp bytes.Buffer
 
 	s, _ := New(&Config{})
-	ctx, err := s.authenticate(&resp, req)
+	ctx, err := s.Authenticate(&resp, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -21,7 +21,7 @@ func TestNoAuth(t *testing.T) {
 	}
 
 	out := resp.Bytes()
-	if !bytes.Equal(out, []byte{socks5Version, NoAuth}) {
+	if !bytes.Equal(out, []byte{Socks5Version, NoAuth}) {
 		t.Fatalf("bad: %v", out)
 	}
 }
@@ -40,7 +40,7 @@ func TestPasswordAuth_Valid(t *testing.T) {
 
 	s, _ := New(&Config{AuthMethods: []Authenticator{cator}})
 
-	ctx, err := s.authenticate(&resp, req)
+	ctx, err := s.Authenticate(&resp, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestPasswordAuth_Valid(t *testing.T) {
 	}
 
 	out := resp.Bytes()
-	if !bytes.Equal(out, []byte{socks5Version, UserPassAuth, 1, authSuccess}) {
+	if !bytes.Equal(out, []byte{Socks5Version, UserPassAuth, 1, authSuccess}) {
 		t.Fatalf("bad: %v", out)
 	}
 }
@@ -76,7 +76,7 @@ func TestPasswordAuth_Invalid(t *testing.T) {
 	cator := UserPassAuthenticator{Credentials: cred}
 	s, _ := New(&Config{AuthMethods: []Authenticator{cator}})
 
-	ctx, err := s.authenticate(&resp, req)
+	ctx, err := s.Authenticate(&resp, req)
 	if err != UserAuthFailed {
 		t.Fatalf("err: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestPasswordAuth_Invalid(t *testing.T) {
 	}
 
 	out := resp.Bytes()
-	if !bytes.Equal(out, []byte{socks5Version, UserPassAuth, 1, authFailure}) {
+	if !bytes.Equal(out, []byte{Socks5Version, UserPassAuth, 1, authFailure}) {
 		t.Fatalf("bad: %v", out)
 	}
 }
@@ -103,7 +103,7 @@ func TestNoSupportedAuth(t *testing.T) {
 
 	s, _ := New(&Config{AuthMethods: []Authenticator{cator}})
 
-	ctx, err := s.authenticate(&resp, req)
+	ctx, err := s.Authenticate(&resp, req)
 	if err != NoSupportedAuth {
 		t.Fatalf("err: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestNoSupportedAuth(t *testing.T) {
 	}
 
 	out := resp.Bytes()
-	if !bytes.Equal(out, []byte{socks5Version, noAcceptable}) {
+	if !bytes.Equal(out, []byte{Socks5Version, noAcceptable}) {
 		t.Fatalf("bad: %v", out)
 	}
 }

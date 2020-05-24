@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	socks5Version = uint8(5)
+	Socks5Version = uint8(5)
 )
 
 // Config is used to setup and configure a Server
@@ -52,7 +52,7 @@ type Config struct {
 // Server is responsible for accepting connections and handling
 // the details of the SOCKS5 protocol
 type Server struct {
-	config      *Config
+	Config      *Config
 	authMethods map[uint8]Authenticator
 }
 
@@ -83,7 +83,7 @@ func New(conf *Config) (*Server, error) {
 	}
 
 	server := &Server{
-		config: conf,
+		Config: conf,
 	}
 
 	server.authMethods = make(map[uint8]Authenticator)
@@ -124,29 +124,29 @@ func (s *Server) ServeConn(conn net.Conn) error {
 	// Read the version byte
 	version := []byte{0}
 	if _, err := bufConn.Read(version); err != nil {
-		s.config.Logger.Printf("[ERR] socks: Failed to get version byte: %v", err)
+		s.Config.Logger.Printf("[ERR] socks: Failed to get version byte: %v", err)
 		return err
 	}
 
 	// Ensure we are compatible
-	if version[0] != socks5Version {
+	if version[0] != Socks5Version {
 		err := fmt.Errorf("Unsupported SOCKS version: %v", version)
-		s.config.Logger.Printf("[ERR] socks: %v", err)
+		s.Config.Logger.Printf("[ERR] socks: %v", err)
 		return err
 	}
 
 	// Authenticate the connection
-	authContext, err := s.authenticate(conn, bufConn)
+	authContext, err := s.Authenticate(conn, bufConn)
 	if err != nil {
 		err = fmt.Errorf("Failed to authenticate: %v", err)
-		s.config.Logger.Printf("[ERR] socks: %v", err)
+		s.Config.Logger.Printf("[ERR] socks: %v", err)
 		return err
 	}
 
 	request, err := NewRequest(bufConn)
 	if err != nil {
-		if err == unrecognizedAddrType {
-			if err := sendReply(conn, addrTypeNotSupported, nil); err != nil {
+		if err == UnrecognizedAddrType {
+			if err := SendReply(conn, AddrTypeNotSupported, nil); err != nil {
 				return fmt.Errorf("Failed to send reply: %v", err)
 			}
 		}
@@ -158,9 +158,9 @@ func (s *Server) ServeConn(conn net.Conn) error {
 	}
 
 	// Process the client request
-	if err := s.handleRequest(request, conn); err != nil {
+	if err := s.HandleRequest(request, conn); err != nil {
 		err = fmt.Errorf("Failed to handle request: %v", err)
-		s.config.Logger.Printf("[ERR] socks: %v", err)
+		s.Config.Logger.Printf("[ERR] socks: %v", err)
 		return err
 	}
 

@@ -49,7 +49,7 @@ func TestRequest_Connect(t *testing.T) {
 	lAddr := l.Addr().(*net.TCPAddr)
 
 	// Make server
-	s := &Server{config: &Config{
+	s := &Server{Config: &Config{
 		Rules:    PermitAll(),
 		Resolver: DNSResolver{},
 		Logger:   log.New(os.Stdout, "", log.LstdFlags),
@@ -73,7 +73,7 @@ func TestRequest_Connect(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	if err := s.handleRequest(req, resp); err != nil {
+	if err := s.HandleRequest(req, resp); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -124,7 +124,7 @@ func TestRequest_Connect_RuleFail(t *testing.T) {
 	lAddr := l.Addr().(*net.TCPAddr)
 
 	// Make server
-	s := &Server{config: &Config{
+	s := &Server{Config: &Config{
 		Rules:    PermitNone(),
 		Resolver: DNSResolver{},
 		Logger:   log.New(os.Stdout, "", log.LstdFlags),
@@ -148,7 +148,7 @@ func TestRequest_Connect_RuleFail(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	if err := s.handleRequest(req, resp); !strings.Contains(err.Error(), "blocked by rules") {
+	if err := s.HandleRequest(req, resp); !strings.Contains(err.Error(), "blocked by rules") {
 		t.Fatalf("err: %v", err)
 	}
 

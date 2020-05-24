@@ -27,11 +27,11 @@ const (
 	connectionRefused
 	ttlExpired
 	commandNotSupported
-	addrTypeNotSupported
+	AddrTypeNotSupported
 )
 
 var (
-	unrecognizedAddrType = fmt.Errorf("Unrecognized address type")
+	UnrecognizedAddrType = fmt.Errorf("Unrecognized address type")
 )
 
 // AddressRewriter is used to rewrite a destination transparently
@@ -94,7 +94,7 @@ func NewRequest(bufConn io.Reader) (*Request, error) {
 	}
 
 	// Ensure we are compatible
-	if header[0] != socks5Version {
+	if header[0] != Socks5Version {
 		return nil, fmt.Errorf("Unsupported command version: %v", header[0])
 	}
 
@@ -105,7 +105,7 @@ func NewRequest(bufConn io.Reader) (*Request, error) {
 	}
 
 	request := &Request{
-		Version:  socks5Version,
+		Version:  Socks5Version,
 		Command:  header[1],
 		DestAddr: dest,
 		bufConn:  bufConn,
@@ -115,15 +115,15 @@ func NewRequest(bufConn io.Reader) (*Request, error) {
 }
 
 // handleRequest is used for request processing after authentication
-func (s *Server) handleRequest(req *Request, conn conn) error {
+func (s *Server) HandleRequest(req *Request, conn conn) error {
 	ctx := context.Background()
 
 	// Resolve the address if we have a FQDN
 	dest := req.DestAddr
 	if dest.FQDN != "" {
-		ctx_, addr, err := s.config.Resolver.Resolve(ctx, dest.FQDN)
+		ctx_, addr, err := s.Config.Resolver.Resolve(ctx, dest.FQDN)
 		if err != nil {
-			if err := sendReply(conn, hostUnreachable, nil); err != nil {
+			if err := SendReply(conn, hostUnreachable, nil); err != nil {
 				return fmt.Errorf("Failed to send reply: %v", err)
 			}
 			return fmt.Errorf("Failed to resolve destination '%v': %v", dest.FQDN, err)
@@ -134,8 +134,8 @@ func (s *Server) handleRequest(req *Request, conn conn) error {
 
 	// Apply any address rewrites
 	req.realDestAddr = req.DestAddr
-	if s.config.Rewriter != nil {
-		ctx, req.realDestAddr = s.config.Rewriter.Rewrite(ctx, req)
+	if s.Config.Rewriter != nil {
+		ctx, req.realDestAddr = s.Config.Rewriter.Rewrite(ctx, req)
 	}
 
 	// Switch on the command
@@ -147,7 +147,7 @@ func (s *Server) handleRequest(req *Request, conn conn) error {
 	case AssociateCommand:
 		return s.handleAssociate(ctx, conn, req)
 	default:
-		if err := sendReply(conn, commandNotSupported, nil); err != nil {
+		if err := SendReply(conn, commandNotSupported, nil); err != nil {
 			return fmt.Errorf("Failed to send reply: %v", err)
 		}
 		return fmt.Errorf("Unsupported command: %v", req.Command)
@@ -157,8 +157,8 @@ func (s *Server) handleRequest(req *Request, conn conn) error {
 // handleConnect is used to handle a connect command
 func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) error {
 	// Check if this is allowed
-	if ctx_, ok := s.config.Rules.Allow(ctx, req); !ok {
-		if err := sendReply(conn, ruleFailure, nil); err != nil {
+	if ctx_, ok := s.Config.Rules.Allow(ctx, req); !ok {
+		if err := SendReply(conn, ruleFailure, nil); err != nil {
 			return fmt.Errorf("Failed to send reply: %v", err)
 		}
 		return fmt.Errorf("Connect to %v blocked by rules", req.DestAddr)
@@ -167,7 +167,7 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 	}
 
 	// Attempt to connect
-	dial := s.config.Dial
+	dial := s.Config.Dial
 	if dial == nil {
 		dial = func(ctx context.Context, net_, addr string) (net.Conn, error) {
 			return net.Dial(net_, addr)
@@ -182,7 +182,7 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 		} else if strings.Contains(msg, "network is unreachable") {
 			resp = networkUnreachable
 		}
-		if err := sendReply(conn, resp, nil); err != nil {
+		if err := SendReply(conn, resp, nil); err != nil {
 			return fmt.Errorf("Failed to send reply: %v", err)
 		}
 		return fmt.Errorf("Connect to %v failed: %v", req.DestAddr, err)
@@ -194,7 +194,7 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 	if tcpAddr, ok := target.LocalAddr().(*net.TCPAddr); ok {
 		bind = &AddrSpec{IP: tcpAddr.IP, Port: tcpAddr.Port}
 	}
-	if err := sendReply(conn, successReply, bind); err != nil {
+	if err := SendReply(conn, successReply, bind); err != nil {
 		return fmt.Errorf("Failed to send reply: %v", err)
 	}
 
@@ -217,8 +217,8 @@ func (s *Server) handleConnect(ctx context.Context, conn conn, req *Request) err
 // handleBind is used to handle a connect command
 func (s *Server) handleBind(ctx context.Context, conn conn, req *Request) error {
 	// Check if this is allowed
-	if ctx_, ok := s.config.Rules.Allow(ctx, req); !ok {
-		if err := sendReply(conn, ruleFailure, nil); err != nil {
+	if ctx_, ok := s.Config.Rules.Allow(ctx, req); !ok {
+		if err := SendReply(conn, ruleFailure, nil); err != nil {
 			return fmt.Errorf("Failed to send reply: %v", err)
 		}
 		return fmt.Errorf("Bind to %v blocked by rules", req.DestAddr)
@@ -227,7 +227,7 @@ func (s *Server) handleBind(ctx context.Context, conn conn, req *Request) error 
 	}
 
 	// TODO: Support bind
-	if err := sendReply(conn, commandNotSupported, nil); err != nil {
+	if err := SendReply(conn, commandNotSupported, nil); err != nil {
 		return fmt.Errorf("Failed to send reply: %v", err)
 	}
 	return nil
@@ -236,8 +236,8 @@ func (s *Server) handleBind(ctx context.Context, conn conn, req *Request) error 
 // handleAssociate is used to handle a connect command
 func (s *Server) handleAssociate(ctx context.Context, conn conn, req *Request) error {
 	// Check if this is allowed
-	if ctx_, ok := s.config.Rules.Allow(ctx, req); !ok {
-		if err := sendReply(conn, ruleFailure, nil); err != nil {
+	if ctx_, ok := s.Config.Rules.Allow(ctx, req); !ok {
+		if err := SendReply(conn, ruleFailure, nil); err != nil {
 			return fmt.Errorf("Failed to send reply: %v", err)
 		}
 		return fmt.Errorf("Associate to %v blocked by rules", req.DestAddr)
@@ -246,7 +246,7 @@ func (s *Server) handleAssociate(ctx context.Context, conn conn, req *Request) e
 	}
 
 	// TODO: Support associate
-	if err := sendReply(conn, commandNotSupported, nil); err != nil {
+	if err := SendReply(conn, commandNotSupported, nil); err != nil {
 		return fmt.Errorf("Failed to send reply: %v", err)
 	}
 	return nil
@@ -291,7 +291,7 @@ func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 		d.FQDN = string(fqdn)
 
 	default:
-		return nil, unrecognizedAddrType
+		return nil, UnrecognizedAddrType
 	}
 
 	// Read the port
@@ -305,7 +305,7 @@ func readAddrSpec(r io.Reader) (*AddrSpec, error) {
 }
 
 // sendReply is used to send a reply message
-func sendReply(w io.Writer, resp uint8, addr *AddrSpec) error {
+func SendReply(w io.Writer, resp uint8, addr *AddrSpec) error {
 	// Format the address
 	var addrType uint8
 	var addrBody []byte
@@ -337,7 +337,7 @@ func sendReply(w io.Writer, resp uint8, addr *AddrSpec) error {
 
 	// Format the message
 	msg := make([]byte, 6+len(addrBody))
-	msg[0] = socks5Version
+	msg[0] = Socks5Version
 	msg[1] = resp
 	msg[2] = 0 // Reserved
 	msg[3] = addrType
